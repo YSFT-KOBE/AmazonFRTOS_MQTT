@@ -243,28 +243,9 @@ static void _operationCompleteCallback( void * param1,
 static void _mqttSubscriptionCallback( void * param1,
                                        IotMqttCallbackParam_t * const pPublish )
 {
-    int acknowledgementLength = 0;
-    size_t messageNumberIndex = 0, messageNumberLength = 1;
     IotSemaphore_t * pPublishesReceived = ( IotSemaphore_t * ) param1;
-    const char * pPayload = pPublish->u.message.info.pPayload;
 
     /* Print information about the incoming PUBLISH message. */
-#if 0
-    IotLogInfo( "Incoming PUBLISH received:\r\n"
-                "Subscription topic filter: %.*s\r\n"
-                "Publish topic name: %.*s\r\n"
-                "Publish retain flag: %d\r\n"
-                "Publish QoS: %d\r\n"
-                "Publish payload: %.*s",
-                pPublish->u.message.topicFilterLength,
-                pPublish->u.message.pTopicFilter,
-                pPublish->u.message.info.topicNameLength,
-                pPublish->u.message.info.pTopicName,
-                pPublish->u.message.info.retain,
-                pPublish->u.message.info.qos,
-                pPublish->u.message.info.payloadLength,
-                pPayload );
-#else
     IotLogInfo( "Incoming PUBLISH received:\r\n"
                 "Publish topic name: %.*s\r\n",
                 pPublish->u.message.info.topicNameLength,
@@ -273,7 +254,7 @@ static void _mqttSubscriptionCallback( void * param1,
     taskData[pPublish->u.message.info.topicNameLength] = '\0';
 
     IotLogInfo( "taskData: %s\r\n", taskData );
-#endif
+
     /* Increment the number of PUBLISH messages received. */
     IotSemaphore_Post( pPublishesReceived );
 }
@@ -552,7 +533,7 @@ static int _publishAllMessages( IotMqttConnection_t mqttConnection,
                                 const char ** pTopicNames )
 {
     int status = EXIT_SUCCESS;
-    intptr_t publishCount = 0, i = 0;
+    intptr_t publishCount = 0;
     IotMqttError_t publishStatus = IOT_MQTT_STATUS_PENDING;
     IotMqttPublishInfo_t publishInfo = IOT_MQTT_PUBLISH_INFO_INITIALIZER;
     IotMqttCallbackInfo_t publishComplete = IOT_MQTT_CALLBACK_INFO_INITIALIZER;
@@ -685,8 +666,6 @@ int RunMqttDemo( bool awsIotMqttMode,
     /* Initialize the libraries required for this demo. */
     status = _initializeDemo();
 
-    int idx = 0;
-
     gpio_config_t gpioConfig ={
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_DEF_OUTPUT,
@@ -751,7 +730,7 @@ int RunMqttDemo( bool awsIotMqttMode,
         bool loop = true;
         while(loop)
         {
-            if( IotSemaphore_TimedWait( &publishesReceived, 60000 ) == false )
+            if( IotSemaphore_TimedWait( &publishesReceived, 600000 ) == false )
             {
                 IotLogError( "Timed out waiting for incoming PUBLISH messages." );
                 loop = false;
@@ -785,26 +764,6 @@ int RunMqttDemo( bool awsIotMqttMode,
 
             gpio_set_level(GPIO_NUM_0, gpio_NowLevel);
         }
-#if 0
-    	for(idx = 0; idx < 120; idx++ ){
-
-            IotClock_SleepMs(1000);
-
-            if( 0 == gpio_NowLevel ){
-                gpio_NowLevel = 1;
-            }else{
-                gpio_NowLevel = 0;
-            }
-
-            IotLogInfo( "GPIO NOW LEVEL : %d\n", gpio_NowLevel);
-
-            errRet = gpio_set_level(GPIO_NUM_0, gpio_NowLevel);
-            if( ESP_OK != errRet){
-                status = EXIT_FAILURE;
-          		break;
-            }
-        }
-#endif
     }
 
     if( status == EXIT_SUCCESS )
